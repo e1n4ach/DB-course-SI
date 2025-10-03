@@ -1,0 +1,112 @@
+///////////////////////////////////////////////////////////
+// Digital Content Library — Core (DBML для dbdiagram.io)
+///////////////////////////////////////////////////////////
+
+Enum content_type {
+  BOOK
+  MOVIE
+  MUSIC
+}
+
+Enum list_type {
+  READING
+  WATCHING
+  LISTENING
+  CUSTOM
+}
+
+Table users {
+  user_id       bigserial [pk]
+  email         varchar(320) [not null, unique]
+  password_hash varchar(200) [not null]
+  display_name  varchar(100) [not null]
+  
+  Note: 'Пользователь системы'
+}
+
+Table content_items {
+  content_id    bigserial [pk]
+  title         varchar(500) [not null]
+  content_type  content_type [not null]
+  release_year  smallint
+  language      varchar(10)
+  description   text
+
+  creator       varchar(200)  // Автор/режиссёр/исполнитель
+  genres        json          // Массив жанров в JSON (["Drama","Sci-Fi"])
+
+  duration_min  int           // для фильмов/музыки
+  pages         int           // для книг
+
+  indexes {
+    (title)
+  }
+
+  Note: 'Единый объект: книга/фильм/музыка'
+}
+
+Table collections {
+  collection_id bigserial [pk]
+  user_id       bigint [not null, ref: > users.user_id]
+  name          varchar(100) [not null]
+  created_at    timestamptz [not null, default: `now()`]
+
+  indexes {
+    (user_id, name) [unique]
+  }
+
+  Note: 'Личная коллекция пользователя'
+}
+
+Table collection_items {
+  collection_id bigint [not null, ref: > collections.collection_id]
+  content_id    bigint [not null, ref: > content_items.content_id]
+  primary key (collection_id, content_id)
+
+  indexes {
+    (content_id)
+  }
+
+  Note: 'Состав коллекции (M:N)'
+}
+
+Table lists {
+  list_id     bigserial [pk]
+  user_id     bigint [not null, ref: > users.user_id]
+  name        varchar(100) [not null]
+  list_type   list_type [not null]
+  
+  indexes {
+    (user_id, name) [unique]
+  }
+
+  Note: 'Пользовательские списки'
+}
+
+Table list_items {
+  list_id     bigint [not null, ref: > lists.list_id]
+  content_id  bigint [not null, ref: > content_items.content_id]
+  position    int
+  primary key (list_id, content_id)
+
+  indexes {
+    (list_id, position) [unique]
+    (content_id)
+  }
+
+  Note: 'Элементы списков с порядком'
+}
+
+Table ratings {
+  user_id    bigint [not null, ref: > users.user_id]
+  content_id bigint [not null, ref: > content_items.content_id]
+  score      smallint [not null]   // 1..10 (проверка будет в SQL)
+  review     text
+  primary key (user_id, content_id)
+
+  indexes {
+    (content_id)
+  }
+
+  Note: 'Оценки пользователей; 1 пользователь = 1 оценка на item'
+}
