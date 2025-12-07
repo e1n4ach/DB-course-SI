@@ -1,0 +1,146 @@
+Table clients {
+  id int [pk, increment]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  email varchar(100) [unique, not null]
+  phone varchar(20) [not null]
+  is_problem_client boolean [default: false]
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table staff {
+  id int [pk, increment]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  email varchar(100) [unique, not null]
+  phone varchar(20)
+  role varchar(50) [not null, note: 'photographer, makeup_artist, admin']
+  hourly_rate decimal(10,2) [not null]
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table studio_rooms {
+  id int [pk, increment]
+  name varchar(100) [unique, not null]
+  capacity int [not null]
+  base_equipment text
+  status varchar(50) [default: 'available', note: 'available, maintenance, closed']
+  hourly_rate decimal(10,2) [not null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table equipment {
+  id int [pk, increment]
+  name varchar(100) [not null]
+  equipment_type varchar(50) [not null, note: 'camera, lens, light, tripod, reflector, backdrop, other']
+  serial_number varchar(100) [unique]
+  status varchar(50) [default: 'working', note: 'working, maintenance, broken']
+  room_id int [ref: > studio_rooms.id]
+  purchase_date date
+  last_maintenance date
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table tariff_packages {
+  id int [pk, increment]
+  name varchar(100) [unique, not null]
+  session_type varchar(50) [not null, note: 'family, product, love_story, portrait, event']
+  duration_minutes int [not null]
+  base_price decimal(10,2) [not null]
+  included_photos int
+  included_edits int
+  description text
+  is_active boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table additional_services {
+  id int [pk, increment]
+  name varchar(100) [unique, not null]
+  service_type varchar(50) [not null, note: 'makeup, printing, props, album, retouching, other']
+  price decimal(10,2) [not null]
+  description text
+  is_available boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+}
+
+Table bookings {
+  id int [pk, increment]
+  client_id int [not null, ref: > clients.id]
+  room_id int [not null, ref: > studio_rooms.id]
+  photographer_id int [not null, ref: > staff.id]
+  tariff_package_id int [not null, ref: > tariff_packages.id]
+  session_date date [not null]
+  session_start_time time [not null]
+  session_end_time time [not null]
+  total_price decimal(10,2) [not null]
+  status varchar(50) [default: 'new', note: 'new, confirmed, cancelled, completed']
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  indexes {
+    (client_id, status) [name: 'idx_bookings_client_status']
+    (photographer_id, session_date) [name: 'idx_bookings_photographer_date']
+    (room_id, session_date, status) [name: 'idx_bookings_room_schedule']
+  }
+}
+
+Table booking_services {
+  id int [pk, increment]
+  booking_id int [not null, ref: > bookings.id]
+  service_id int [not null, ref: > additional_services.id]
+  quantity int [default: 1]
+  service_price decimal(10,2) [not null]
+  created_at timestamp [default: `now()`]
+}
+
+Table payments {
+  id int [pk, increment]
+  booking_id int [not null, ref: > bookings.id]
+  amount decimal(10,2) [not null]
+  payment_method varchar(50) [not null, note: 'cash, card, transfer']
+  payment_date timestamp [not null]
+  status varchar(50) [default: 'pending', note: 'pending, completed, refunded']
+  notes text
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  indexes {
+    (booking_id, status) [name: 'idx_payments_booking_status']
+    (payment_date, status) [name: 'idx_payments_date_status']
+  }
+}
+
+Table maintenance_log {
+  id int [pk, increment]
+  equipment_id int [not null, ref: > equipment.id]
+  maintenance_type varchar(50) [not null, note: 'repair, cleaning, inspection, calibration']
+  description text
+  cost decimal(10,2)
+  maintenance_date date [not null]
+  next_maintenance_date date
+  performed_by varchar(100)
+  created_at timestamp [default: `now()`]
+}
+
+Table audit_log {
+  id int [pk, increment]
+  table_name varchar(100) [not null]
+  operation varchar(10) [not null, note: 'INSERT, UPDATE, DELETE']
+  record_id int [not null]
+  changed_by varchar(100)
+  old_values jsonb
+  new_values jsonb
+  change_timestamp timestamp [default: `now()`]
+  indexes {
+    (table_name, change_timestamp) [name: 'idx_audit_table_timestamp']
+  }
+}
